@@ -2,17 +2,24 @@
 title: "Twitter's Birdwatch Platform: Replicating Figures from the Original Paper"
 runtime: shiny
 author: "Alou Kone and Vaishnavi Dixit"
-date: "`r format(Sys.Date(), '%B %d, %Y')`"
-output: "html_document"
+date: "June 17, 2025"
+output:  
+  html_document:
+    code_folding: show
 ---
-### Importing Required Libraries and Data (Notes and Ratings)
+We attempted to replicate the figures from the original paper on Twitter's Birdwatch platform. The original paper can be found [here](https://arxiv.org/pdf/2104.07175).
+Some of the aspects of the figures were not replicated due to the lack of access to the original data. However, we were able to replicate most of the figures using the data we had access to. The figures are presented below.
+
+Original Datasets Size: 11,802 Birdwatch notes and 52,981 ratings
+Our Datasets Dize: 9,377 Birdwatch notes and 45,885 ratings
+
+### After Importing Required Libraries and Data (Notes, Ratings and Source Tweets)
 ```{r setup, include=FALSE}
 
 library(tidyverse)
 library(scales)
 library(modelr)
 library(readr)
-library(shiny)
 library(ggplot2)
 library(dplyr)
 library(forcats)
@@ -21,13 +28,14 @@ notes <- read_tsv("C:/Users/ds3/Desktop/New folder/coursework/week4/community-no
 ratings <- read_tsv("C:/Users/ds3/Desktop/New folder/coursework/week4/community-notes-2025-group-6/complete_filtered_ratings.tsv")
 
 load("C:/Users/ds3/Desktop/New folder/coursework/week4/community-notes-2025-group-6/source_tweets.Rdata", ournew_env <- new.env())
-source_tweets <- our_env[["."]]
+source_tweets <- ournew_env[["."]]
 source_tweets <- source_tweets %>% filter(!is.na(source_followers_count))
-
+nrow(notes)
+nrow(ratings)
 ```
 
 ### Figure 2: Distribution of Birdwatch Notes by Classification and Trustworthiness
-```{r, fig.width=6, fig.height=3}
+```{r, fig.width=6, fig.height=3, echo=FALSE}
 
 notes %>% mutate(classification = ifelse(classification == "MISINFORMED_OR_POTENTIALLY_MISLEADING", "Misleading", "Not Misleading")) %>%
   mutate(trustworthiness = ifelse(trustworthySources == 1, "Trustworthy Sources", "No Trustworthy Sources")) %>%
@@ -41,12 +49,12 @@ notes %>% mutate(classification = ifelse(classification == "MISINFORMED_OR_POTEN
 ```
 
 ### Figure 3: Types of Misleading Birdwatch Notes
-```{r, fig.width=6, fig.height=3}
+```{r, fig.width=6, fig.height=3, echo=FALSE}
 
 notes_misleading <- notes %>% rename(Other = misleadingOther,  Factual_Error = misleadingFactualError, Missing_Important_Context = misleadingMissingImportantContext, 
-  Unverified_Claim_As_Fact = misleadingUnverifiedClaimAsFact, Outdated_Information = misleadingOutdatedInformation, Satire = misleadingSatire, 
-  Manipulated_Media = misleadingManipulatedMedia) 
-  %>% summarize(Other = sum(Other, na.rm = TRUE), Factual_Error = sum(Factual_Error, na.rm = TRUE), Manipulated_Media = sum(Manipulated_Media, na.rm = TRUE), 
+  Unverified_Claim_As_Fact = misleadingUnverifiedClaimAsFact, Outdated_Information = misleadingOutdatedInformation, 
+  Satire = misleadingSatire, Manipulated_Media = misleadingManipulatedMedia) %>% 
+  summarize(Other = sum(Other, na.rm = TRUE), Factual_Error = sum(Factual_Error, na.rm = TRUE), Manipulated_Media = sum(Manipulated_Media, na.rm = TRUE), 
   Outdated_Information = sum(Outdated_Information, na.rm = TRUE), Missing_Important_Context = sum(Missing_Important_Context, na.rm = TRUE), 
   Unverified_Claim_As_Fact = sum(Unverified_Claim_As_Fact, na.rm = TRUE), 
   Satire = sum(Satire, na.rm = TRUE))
@@ -62,7 +70,7 @@ ggplot(notes_misleading, aes(x = count, y = fct_reorder(misleadingType, count)))
 ```
 
 ### Figure 4: Types of Not Misleading Birdwatch Notes
-```{r, fig.width=6, fig.height=3}
+```{r, fig.width=6, fig.height=3, echo=FALSE}
 
 notes_not_misleading <- notes %>% rename(Other = notMisleadingOther,  Factually_Correct = notMisleadingFactuallyCorrect, Personal_Opinion = notMisleadingPersonalOpinion, 
   Outdated_But_Not_When_Written = notMisleadingOutdatedButNotWhenWritten, Clearly_Satire = notMisleadingClearlySatire) %>% 
@@ -79,7 +87,7 @@ ggplot(notes_not_misleading, aes(x = count, y = fct_reorder(misleadingType, coun
 ```
 
 ### Figure 5c: Distribution of Birdwatch Notes by Classification and Word Count
-```{r, fig.width=6, fig.height=3}
+```{r, fig.width=6, fig.height=5, echo=FALSE, warning=FALSE}
 notes <- notes %>% group_by(classification) %>%
   mutate(word_count = str_count(summary, boundary("word"))) %>% mutate(total_words = sum(word_count, na.rm = TRUE))
 
@@ -95,18 +103,24 @@ notes %>%
   theme_minimal() +
   scale_y_log10(limits = c(0.01, 100), label = comma)+
   theme(legend.position = "top") +
-  labs(x = "Word Count", y = "CCDF (%)") +
+  labs(x = "Word Count", y = "CCDF (%)")
 ```
 
 ### Figure 7a: Distribution of Birdwatch Notes by Classification and Helpful Ratio
-```{r, fig.width=6, fig.height=3}
-
+```{r, fig.width=6, fig.height=5, echo=FALSE}
 # Calculate ratio_helpful for each noteId
 ratings_summary <- ratings %>%
-  group_by(noteId) %>%
+  group_by(noteId) %>% 
+  mutate(
+    helpful = ifelse(
+      version == 1,
+      helpful,
+      ifelse(helpfulnessLevel %in% c("HELPFUL", "SOMEWHAT_HELPFUL"), 1, 0)
+    )
+  ) %>%
   summarize(
-    total_helpful = sum(helpful, na.rm = TRUE),
-    total_unhelpful = sum(notHelpful, na.rm = TRUE)
+    total_helpful = sum(helpful == 1, na.rm = TRUE),
+    total_unhelpful = sum(helpful == 0, na.rm = TRUE)
   ) %>%
   mutate(
     total = total_helpful + total_unhelpful,
@@ -127,23 +141,15 @@ notes_ratings <- notes %>%
 # Plot
 notes_ratings %>%
   ggplot(aes(x = ratio_helpful, y = ccdf, color = classification)) +
-  geom_line() +
-  labs(x = "Helpful Ratio", y = "CCDF (%)") +
+  geom_line() + 
+  theme(legend.position = "top") +
+  labs(x = "Helpful Ratio", y = "CCDF (%)")
 ```
 
 ### Figure 7b: Distribution of Votes by Classification
-```{r, fig.width=6, fig.height=3}
-
+```{r, fig.width=6, fig.height=5, echo=FALSE}
 # Calculate ratio_helpful for each noteId
-ratings_summary_votes <- ratings %>%
-  group_by(noteId) %>%
-  summarize(
-    total_helpful = sum(helpful, na.rm = TRUE),
-    total_unhelpful = sum(notHelpful, na.rm = TRUE)
-  ) %>%
-  mutate(
-    total = total_helpful + total_unhelpful
-  )
+ratings_summary_votes <- ratings_summary
 
 # Join with notes and calculate CCDF by classification
 notes_ratings_votes <- notes %>%
@@ -160,12 +166,13 @@ notes_ratings_votes <- notes %>%
 notes_ratings_votes %>%
   ggplot(aes(x = total, y = ccdf, color = classification)) +
   geom_line()+
+  theme(legend.position = "top") +
   scale_y_log10(limits = c(0.01, 100), label = comma)+
   labs(x = "Votes (Helpful & not Helpful)", y = "CCDF (%)")
 ```
 
 ### Figure 8: Distribution of Helpful Ratings
-```{r, fig.width=6, fig.height=3}
+```{r, fig.width=6, fig.height=3, echo=FALSE}
 
 ratings_helpful <- ratings %>% rename(Other = helpfulOther,  Informative = helpfulInformative, Clear = helpfulClear, Empathetic = helpfulEmpathetic, 
   Good_Sources = helpfulGoodSources, Unique_Context = helpfulUniqueContext, Address_Claim = helpfulAddressesClaim, Important_Context = helpfulImportantContext) %>% 
@@ -183,7 +190,7 @@ ggplot(ratings_helpful, aes(x = count, y = fct_reorder(helpingType, count))) +
 ```
 
 ### Figure 9: Distribution of Not Helpful Ratings
-```{r, fig.width=6, fig.height=3}
+```{r, fig.width=6, fig.height=3, echo=FALSE}
 ratings_unhelpful <- ratings %>% rename(Other = notHelpfulOther,  Incorrect = notHelpfulIncorrect, Sources_Missing_Or_Unreliable = notHelpfulSourcesMissingOrUnreliable,  
   Opinion_Speculation_Or_Bias = notHelpfulOpinionSpeculationOrBias, Missing_Key_Points = notHelpfulMissingKeyPoints, Outdated = notHelpfulOutdated, 
   Hard_To_Understand = notHelpfulHardToUnderstand, Argumentative_Or_Biased = notHelpfulArgumentativeOrBiased, Off_Topic = notHelpfulOffTopic, 
@@ -204,36 +211,37 @@ ggplot(ratings_unhelpful, aes(x = count, y = fct_reorder(nothelpingType, count))
 ```
 
 ### Figure 10: Regression Analysis of Helpful Ratings
-```{r , fig.width=6, fig.height=3}
-
+```{r , fig.width=6, fig.height=5, echo=FALSE, warning=FALSE}
 notes_ratings_reg <- inner_join(notes, source_tweets, by = c("noteId")) %>% inner_join(ratings, by = "noteId") 
 len <- nrow(notes_ratings_reg)
 
 notes_ratings_reg <- mutate(notes_ratings_reg, classification = ifelse(classification == "MISINFORMED_OR_POTENTIALLY_MISLEADING", 1, 0), 
   age = as.integer(interval(source_account_created_at, Sys.Date()) / years(1)), word_count = str_count(summary, boundary("word")))
 
-# 10% for test set
-num_test <- floor(len * 0.1)
-test_ndx <- sample(1:len, num_test, replace = FALSE)
-notes_ratings_test <- notes_ratings_reg[test_ndx, ]
 
-# 90% for validation set + training set
-notes_ratings_90 <- notes_ratings_reg[-test_ndx, ]
-train_ndx <- sample(1:nrow(notes_ratings_90), size = floor(0.8 * nrow(notes_ratings_90)), replace = FALSE)
-notes_ratings_train <- notes_ratings_90[train_ndx, ]
-notes_ratings_validate <- notes_ratings_90[-train_ndx, ]
+notes_ratings_reg <- mutate(notes_ratings_reg, word_count = scale(word_count), source_followers_count = scale(source_followers_count), 
+ source_friends_count = scale(source_friends_count), age = scale(age))
 
 
-reg_model <- glm(helpful ~ classification + trustworthySources + scale(word_count) + scale(source_followers_count) + source_verified + scale(source_friends_count) + 
-  scale(age), family = binomial, data = notes_ratings_train)
+reg_model <- glm(helpful ~ classification + trustworthySources + word_count + source_followers_count + source_verified + source_friends_count + 
+  age, family = binomial, data = notes_ratings_reg)
+
 
 coefficients_ratio <- as.data.frame(summary(reg_model)$coefficients)
+
 coefficients_ratio$predictor <- rownames(coefficients_ratio)
-ggplot(coefficients_ratio) + geom_point(aes(x = predictor, y = Estimate), color = "blue", size = 5) + 
+
+ggplot(coefficients_ratio) + geom_point(aes(x = predictor, y = Estimate), color = "blue", size = 3) + 
   geom_errorbar(aes(x = predictor, ymin = Estimate - (2.576 * coefficients_ratio$"Std. Error"), 
   ymax = Estimate + (2.576 * coefficients_ratio$"Std. Error")), width = 0, color = "orange") +
   labs(x = "Predictor Variables", y = "Coefficient Estimate") +
   theme_minimal() + 
   scale_y_continuous(limits = c(-0.8, 1.0)) + 
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
 ```
+
+Research Question:
+Can we see a connection between followers and followees count and if it affects the helpfulness 
+of a note as a famous person can have more followers and spread wrong information and if a person 
+who has less stats but their correct info can be rated less helpful?
