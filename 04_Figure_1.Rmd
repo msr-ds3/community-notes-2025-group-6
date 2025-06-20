@@ -245,3 +245,6 @@ Research Question:
 Can we see a connection between followers and followees count and if it affects the helpfulness 
 of a note as a famous person can have more followers and spread wrong information and if a person 
 who has less stats but their correct info can be rated less helpful?
+
+For the extension we can check the relationship between nodes classified as notmisleading and helpfulness.
+That is we can check the pearson r cooleration beetween notes classified as notmisleading and the feautre helpful.
